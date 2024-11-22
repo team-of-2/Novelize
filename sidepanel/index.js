@@ -82,20 +82,27 @@ async function createSummarizer(config, downloadProgressCallback) {
   if (!window.ai || !window.ai.summarizer) {
     throw new Error('AI Summarization is not supported in this browser');
   }
+  console.log('window.ai:', window.ai);
+  console.log('window.ai.summarizer:', window.ai?.summarizer);
   const canSummarize = await window.ai.summarizer.capabilities();
+  
+  console.log('canSummarize:', canSummarize);
   if (canSummarize.available === 'no') {
     throw new Error('AI Summarization is not supported');
   }
+  console.log('canSummarize.available =', canSummarize.available);
   const summarizationSession = await self.ai.summarizer.create(
     config,
     downloadProgressCallback
   );
   if (canSummarize.available === 'after-download') {
+    console.log('Downloading model...');
     summarizationSession.addEventListener(
       'downloadprogress',
       downloadProgressCallback
     );
     await summarizationSession.ready;
+    console.log('Model downloaded');
   }
   return summarizationSession;
 }
