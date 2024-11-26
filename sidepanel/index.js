@@ -119,3 +119,71 @@ async function updateWarning(warning) {
     warningElement.setAttribute('hidden', '');
   }
 }
+
+
+/* ******************* Novelize Functions ************************* */
+async function generateSummary(text) {
+  try {
+    // Step 1: Extract names and context using Claude API
+    const extractedData = await interactWithClaudeAPI({
+      task: "Extract names and context",
+      input: text,
+    });
+
+    // Step 2: Send extracted names to Claude for identification
+    const characterData = await interactWithClaudeAPI({
+      task: "Identify or classify characters",
+      input: {
+        names: extractedData.names,
+        context: extractedData.context,
+        existingCharacters: storedCharacters, // Your maintained list of characters
+      },
+    });
+
+    // Update your stored characters with the result
+    updateStoredCharacters(characterData);
+
+    return generateCharacterSummary(characterData);
+  } catch (e) {
+    console.log('Summary generation failed');
+    console.error(e);
+    return 'Error: ' + e.message;
+  }
+}
+
+async function interactWithClaudeAPI(payload) {
+  const response = await fetch('<Claude_API_endpoint>', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer <Your_API_Key>',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Claude API error: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+function updateStoredCharacters(newData) {
+  newData.forEach((character) => {
+    const existing = storedCharacters.find((c) => c.name === character.name);
+    if (existing) {
+      existing.actions.push(...character.actions);
+    } else {
+      storedCharacters.push(character);
+    }
+  });
+}
+
+function generateCharacterSummary(characterData) {
+  return characterData
+    .map(
+      (character) =>
+        `**${character.name}**: ${character.actions.join('; ')}`
+    )
+    .join('\n\n');
+}
