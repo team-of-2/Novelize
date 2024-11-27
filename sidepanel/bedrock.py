@@ -3,12 +3,14 @@ import json
 import time
 import pandas as pd
 
+# Global variable for the maximum note word count limit
+MAX_CHARACTER_COUNT = 500
+
 # Setup bedrock
 bedrock_runtime = boto3.client(
     service_name="bedrock-runtime",
     region_name="us-west-2",
 )
-
 
 def call_claude_sonet(prompt):
 
@@ -97,7 +99,7 @@ def extract_single_character(text, already_extracted=[]):
 
     start_time = time.time()  # Record the start time
     result = call_claude_sonet_with_backoff(prompt)
-    print(result)
+    #print(result)
     end_time = time.time()  # Record the end time
 
     elapsed_time = end_time - start_time  # Calculate the elapsed time
@@ -114,7 +116,7 @@ def extract_all_characters(text):
     """
     prompt = (
         f"Extract all characters and what they did from the following text. "
-        f"List each character and their actions in the format 'Name: Action'. "
+        f"List each character and their actions in the format 'Name: Action'. For example, 'President Washington: Addressed the nation in his inaugural speech'. "
         f"Separate multiple actions for the same character with semicolons. "
         f"If no characters are found, respond with '<none>'.\n\n"
         f"Text:\n{text}"
@@ -125,59 +127,133 @@ def extract_all_characters(text):
     else:
         return "<error>"
 
-def process_text_in_one_call(input_text):
+def parse_extracted_characters(extracted_text):
     """
-    Process a single passage to extract all characters and their actions in one API call.
+    Parse the extracted text to create a list of characters and actions.
     """
-    result = extract_all_characters(input_text)
-
-    if result.lower() in ["<none>", "<error>"]:
-        print("No characters found or an error occurred.")
-        return {}
-
-    # Parse the result into a dictionary
-    characters = {}
-    for line in result.split("\n"):
+    characters = []
+    for line in extracted_text.split("\n"):
         if ":" in line:  # Ensure the format 'Name: Action'
-            name, actions = map(str.strip, line.split(":", 1))
-            if name in characters:
-                characters[name] += f"; {actions}"  # Append actions for existing characters
-            else:
-                characters[name] = actions  # Add new character
-
+            name, action = map(str.strip, line.split(":", 1))
+            characters.append({"name": name, "action": action})
     return characters
 
-def process_continued_paragraphs(paragraphs):
+def classify_character(name, existing_characters, context):
     """
-    Process multiple paragraphs sequentially, combining character actions across paragraphs.
+    Classify if the given name matches an existing character or is a new one.
     """
-    all_characters = {}
+    prompt = (
+        f"Here is a list of existing characters: {', '.join(existing_characters)}.\n"
+        f"Determine if the name '{name}' matches one of these characters or is a new character. "
+        f"Consider the following context: {context}.\n"
+        f"Respond with the matching character's name or '<new>' if it is a new character."
+    )
+    result = call_claude_sonet_with_backoff(prompt)
+    if result:
+        return result.strip()
+    else:
+        return "<error>"
 
-    for i, paragraph in enumerate(paragraphs):
-        print(f"\nProcessing Paragraph {i + 1}...")
-        paragraph_characters = process_text_in_one_call(paragraph)
+def summarize_character_notes(name, previous_notes, new_action):
+    """
+    Summarize the character's previous notes with the new action.
+    """
+    prompt = (
+        f"Here are the notes for {name}:\n{previous_notes}\n\n"
+        f"Add the following new action to these notes and summarize them:\n{new_action}."
+    )
+    result = call_claude_sonet_with_backoff(prompt)
+    if result:
+        return result.strip()
+    else:
+        return "<error>"
 
-        # Merge results into the main dictionary
-        for name, actions in paragraph_characters.items():
-            if name in all_characters:
-                all_characters[name] += f"; {actions}"  # Append new actions
+def handle_ambiguous_classification(name, possible_matches, notes, new_action):
+    """
+    Generate summaries for each possible match and return to the user for selection.
+    """
+    summaries = {}
+    for match in possible_matches:
+        summary = summarize_character_notes(match, notes.get(match, ""), new_action)
+        summaries[match] = summary
+
+    return summaries
+
+def update_character_notes(name, notes, new_summary):
+    """
+    Update the notes dictionary with the new summary for the given character.
+    """
+    if name in notes:
+        notes[name] = new_summary
+    else:
+        notes[name] = new_summary
+    return notes
+
+def process_paragraph_with_extraction(paragraph, notes):
+    """
+    Process a paragraph by extracting all characters, classifying them, 
+    and updating their notes.
+    """
+    # Step 1: Extract all characters from the paragraph
+    extracted_text = extract_all_characters(paragraph)
+
+    if "<none>" in extracted_text.lower() or "<error>" in extracted_text.lower():
+        print("No characters found or an error occurred.")
+        return notes
+
+    # Parse the extracted text into a list of characters and actions
+    extracted_characters = parse_extracted_characters(extracted_text)
+
+    # Step 2: Classify and handle each character
+    for character_info in extracted_characters:
+        name = character_info["name"]
+        action = character_info["action"]
+
+        # Classify the character: map to existing or identify as new
+        classification = classify_character(name, list(notes.keys()), paragraph)
+
+        if classification in notes:
+            # Check if the current notes exceed the word limit
+            current_notes = notes.get(classification, "")
+            if len(current_notes) > MAX_CHARACTER_COUNT:
+                # Summarize notes only if the word count exceeds the limit
+                new_summary = summarize_character_notes(
+                    classification, current_notes, action
+                )
+                notes = update_character_notes(classification, notes, new_summary)
+                print(f"\nUpdated notes for {classification} (summarized due to exceeding word count)")
+                print(f"Summary: {new_summary}")
             else:
-                all_characters[name] = actions  # Add new character
+                # Append the new action without summarizing
+                notes[classification] = current_notes + "; " + action
+                print(f"\nUpdated notes for {classification} (appended without summarizing)")
+                print(f"Notes: {notes[classification]}")
+        #elif "<new>" in classification.lower():
+        else:
+            # New character, add to notes
+            notes[name] = action
+        # else:
+        #     # Ambiguous classification, handle manually
+        #     possible_matches = classification.split(", ")
+        #     summaries = handle_ambiguous_classification(name, possible_matches, notes, action)
+        #     print(f"Ambiguity detected for {name}. Possible matches:")
+        #     for match, summary in summaries.items():
+        #         print(f"{match}: {summary}")
+        #     # Mock user selection for simplicity
+        #     user_choice = possible_matches[0]
+        #     notes = update_character_notes(user_choice, notes, summaries[user_choice])
 
-    return all_characters
-
-def save_to_csv(characters, file_name="characters_summary.csv"):
-    """
-    Save character summaries to a CSV file.
-    """
-    formatted_data = [{"Character": char, "Summary": summary} for char, summary in characters.items()]
-    df = pd.DataFrame(formatted_data)
-    df.to_csv(file_name, index=False)
-    print(f"Data saved to {file_name}")
-
+    return notes
 
 if __name__ == "__main__":
     # Sample Paragraphs
+    paragraphs = [
+        """President Washington addressed the nation in his inaugural speech. 
+        George Washington emphasized unity. George later went for a walk in the gardens.""",
+        """Washington, the first President of the United States, held a meeting with his cabinet. 
+        George Washington expressed concerns about foreign relations."""
+    ]
+
     paragraphs = [
         """Alice went to the market and bought some apples. 
         Bob helped her carry the basket. Later, Alice thanked Bob for his help.""",
@@ -188,13 +264,14 @@ if __name__ == "__main__":
         Charlie met them there and brought his dog along. Bob played fetch with Charlie's dog, and Alice took some photos."""
     ]
 
-    # Process all paragraphs
-    characters = process_continued_paragraphs(paragraphs)
+    # Notes dictionary to store summaries
+    notes = {}
+
+    # Process each paragraph
+    for paragraph in paragraphs:
+        notes = process_paragraph_with_extraction(paragraph, notes)
 
     # Output the results
-    print("\nFinal Character Summaries Across All Paragraphs:")
-    for character, summary in characters.items():
+    print("\nFinal Notes:")
+    for character, summary in notes.items():
         print(f"{character}: {summary}")
-
-    # Save the results to a CSV file
-    save_to_csv(characters)
