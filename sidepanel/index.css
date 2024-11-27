@@ -56,3 +56,17 @@ fieldset > * {
   color: white;
   padding: 1em;
 }
+
+.collapsible-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding-left: 10px;
+}
+
+.collapsible-content {
+    display: none; /* 初始隐藏 */
+    padding: 10px;
+    margin-top: 5px;
+}

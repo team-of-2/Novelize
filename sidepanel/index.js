@@ -8,7 +8,7 @@ const MAX_MODEL_CHARS = 4000;
 
 let pageContent = '';
 
-const summaryElement = document.body.querySelector('#summary');
+const summaryElement = document.body.querySelector('#summary-card-container');
 const warningElement = document.body.querySelector('#warning');
 const summaryTypeSelect = document.querySelector('#type');
 const summaryFormatSelect = document.querySelector('#format');
@@ -49,7 +49,35 @@ async function onContentChange(newContent) {
       updateWarning('');
     }
     showSummary('Loading...');
-    summary = await generateSummary(newContent);
+    console.log('summaryTypeSelect.value:', summaryTypeSelect.value);
+    if (summaryTypeSelect.value === 'characters') {
+        summary = await generateSummaryByClaude(newContent);
+        summary = {
+            "Alice": [
+                "went to the market and bought some apples",
+                "thanked Bob for his help",
+                "returned home with the apples",
+                "started baking a pie",
+                "happily shared some flour with Charlie",
+                "decided to visit the park",
+                "took some photos"
+            ],
+            "Bob": [
+                "helped her carry the basket",
+                "joined Alice",
+                "helped peel the apples",
+                "invited Charlie to stay for dinner",
+                "decided to visit the park",
+                "played fetch with Charlie's dog"
+            ],
+            "Charlie": [
+                "met Alice and Bob at the park",
+                "brought his dog along"
+            ]
+        };
+    } else {
+        summary = await generateSummary(newContent);
+    }
   } else {
     summary = "There's nothing to summarize";
   }
@@ -107,8 +135,43 @@ async function createSummarizer(config, downloadProgressCallback) {
   return summarizationSession;
 }
 
-async function showSummary(text) {
-  summaryElement.innerHTML = DOMPurify.sanitize(marked.parse(text));
+async function showSummary(dict) {
+    summaryElement.innerHTML = '';
+    const summaryCard = (name, events) => {
+        const id = `collapse-${name.replace(/\s+/g, '-').toLowerCase()}`;
+        return `
+            <div class="collapsible-button card" data-toggle="${id}">
+                <h3 class="collapsible-header">
+                    ${name}
+                    <span class="icon" id="icon-${id}">➕</span>
+                </h3>
+                <div id="${id}" class="collapsible-content">
+                    <ul>
+                        ${events.map((event) => `<li>${event}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+    };
+
+    Object.entries(dict).forEach(([name, events]) => {
+        summaryElement.innerHTML += summaryCard(name, events);
+    });
+
+    // Add click event listeners for collapsible functionality
+    document.querySelectorAll('.collapsible-button').forEach((button) => {
+        button.addEventListener('click', () => {
+            const content = document.getElementById(button.dataset.toggle);
+            const icon = document.getElementById(`icon-${button.dataset.toggle}`);
+            if (content.style.display === 'block') {
+                content.style.display = 'none';
+                icon.textContent = '➕';
+            } else {
+                content.style.display = 'block';
+                icon.textContent = '➖';
+            }
+        });
+    });
 }
 
 async function updateWarning(warning) {
