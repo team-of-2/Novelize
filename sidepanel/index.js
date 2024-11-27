@@ -122,7 +122,7 @@ async function updateWarning(warning) {
 
 
 /* ******************* Novelize Functions ************************* */
-async function generateSummary(text) {
+async function generateSummaryByClaude(text) {
   try {
     // Step 1: Extract names and context using Claude API
     const extractedData = await interactWithClaudeAPI({
