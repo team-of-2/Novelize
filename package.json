@@ -2,6 +2,7 @@
   "name": "Summarization Example",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "background.js",
   "scripts": {
@@ -17,5 +18,10 @@
     "marked": "14.1.4",
     "rollup": "4.24.4",
     "rollup-plugin-copy": "^3.5.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.699.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.701.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.699.0"
   }
 }
