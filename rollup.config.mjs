@@ -10,6 +10,7 @@ export default {
     dir: 'dist/sidepanel',
     format: 'es', // Switch to ES module format
   },
+  external: ['@aws-sdk/client-bedrock-runtime'],
   plugins: [
     commonjs(),
     nodeResolve(),

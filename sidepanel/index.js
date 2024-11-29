@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-// import { updateNotesWithParagraph } from "./character.js";
+import { updateNotesWithParagraph } from "./character.js";
 // The underlying model has a context of 1,024 tokens, out of which 26 are used by the internal prompt,
 // leaving about 998 tokens for the input text. Each token corresponds, roughly, to about 4 characters, so 4,000
 // is used as a limit to warn the user the content might be too long to summarize.
@@ -52,6 +52,7 @@ async function onContentChange(newContent) {
     console.log('summaryTypeSelect.value:', summaryTypeSelect.value);
     if (summaryTypeSelect.value === 'characters') {
         //summary = await generateSummaryByClaude(newContent);
+        //summary = await updateNotesWithParagraph(newContent, summary);
         summary = {
             "Alice": [
                 "went to the market and bought some apples",
@@ -185,68 +186,4 @@ async function updateWarning(warning) {
 
 
 /* ******************* Novelize Functions ************************* */
-async function generateSummaryByClaude(text) {
-  try {
-    // Step 1: Extract names and context using Claude API
-    const extractedData = await interactWithClaudeAPI({
-      task: "Extract names and context",
-      input: text,
-    });
 
-    // Step 2: Send extracted names to Claude for identification
-    const characterData = await interactWithClaudeAPI({
-      task: "Identify or classify characters",
-      input: {
-        names: extractedData.names,
-        context: extractedData.context,
-        existingCharacters: storedCharacters, // Your maintained list of characters
-      },
-    });
-
-    // Update your stored characters with the result
-    updateStoredCharacters(characterData);
-
-    return generateCharacterSummary(characterData);
-  } catch (e) {
-    console.log('Summary generation failed');
-    console.error(e);
-    return 'Error: ' + e.message;
-  }
-}
-
-async function interactWithClaudeAPI(payload) {
-  const response = await fetch('<Claude_API_endpoint>', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer <Your_API_Key>',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Claude API error: ${response.statusText}`);
-  }
-
-  return response.json();
-}
-
-function updateStoredCharacters(newData) {
-  newData.forEach((character) => {
-    const existing = storedCharacters.find((c) => c.name === character.name);
-    if (existing) {
-      existing.actions.push(...character.actions);
-    } else {
-      storedCharacters.push(character);
-    }
-  });
-}
-
-function generateCharacterSummary(characterData) {
-  return characterData
-    .map(
-      (character) =>
-        `**${character.name}**: ${character.actions.join('; ')}`
-    )
-    .join('\n\n');
-}
