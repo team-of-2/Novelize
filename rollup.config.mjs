@@ -14,6 +14,7 @@ export default {
     commonjs(),
     nodeResolve(),
     json(),
+    visualizer({ filename: "./dist/dependency-graph.html" }),
     copy({
       targets: [
         {

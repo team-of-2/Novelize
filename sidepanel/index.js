@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-import { updateNotesWithParagraph } from "./bedrock-runtime/character.js";
+// import { updateNotesWithParagraph } from "./character.js";
 // The underlying model has a context of 1,024 tokens, out of which 26 are used by the internal prompt,
 // leaving about 998 tokens for the input text. Each token corresponds, roughly, to about 4 characters, so 4,000
 // is used as a limit to warn the user the content might be too long to summarize.
@@ -51,7 +51,7 @@ async function onContentChange(newContent) {
     showSummary('Loading...');
     console.log('summaryTypeSelect.value:', summaryTypeSelect.value);
     if (summaryTypeSelect.value === 'characters') {
-        summary = await updateNotesWithParagraph(newContent);
+        //summary = await generateSummaryByClaude(newContent);
         summary = {
             "Alice": [
                 "went to the market and bought some apples",
