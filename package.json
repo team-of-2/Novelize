@@ -23,6 +23,7 @@
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.699.0",
     "@aws-sdk/client-bedrock-agent-runtime": "^3.701.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.699.0"
+    "@aws-sdk/client-bedrock-runtime": "^3.699.0",
+    "rollup-plugin-visualizer": "^5.12.0"
   }
 }
