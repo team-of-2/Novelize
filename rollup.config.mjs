@@ -1,36 +1,33 @@
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import copy from 'rollup-plugin-copy';
+import json from '@rollup/plugin-json';
+import { visualizer } from "rollup-plugin-visualizer";
 
-export default [
-  {
-    input: 'sidepanel/index.js',
-    output: {
-      dir: 'dist/sidepanel',
-      format: 'iife',
-    },
-    plugins: [
-      commonjs(),
-      nodeResolve(),
-      copy({
-        targets: [
-          {
-            src: ['manifest.json', 'background.js', 'sidepanel', 'images'],
-            dest: 'dist'
-          }
-        ]
-      })
-    ]
+export default {
+  input: 'sidepanel/index.js',
+  output: {
+    dir: 'dist/sidepanel',
+    format: 'es', // Switch to ES module format
   },
-  {
-    input: 'scripts/extract-content.js',
-    output: {
-      dir: 'dist/scripts',
-      format: 'es'
-    },
-    plugins: [
-      commonjs(),
-      nodeResolve(),
-    ]
-  }
-];
+  plugins: [
+    commonjs(),
+    nodeResolve(),
+    json(),
+    copy({
+      targets: [
+        {
+          src: ['manifest.json', 'background.js', 'sidepanel', 'images'],
+          dest: 'dist',
+        },
+      ],
+    }),
+  ],
+  onwarn(warning, warn) {
+    if (warning.code === 'CIRCULAR_DEPENDENCY') {
+      console.warn(`Circular dependency detected: ${warning.cycle ? warning.cycle.join(' -> ') : warning.importer}`);
+    } else {
+      warn(warning);
+    }
+  },
+};

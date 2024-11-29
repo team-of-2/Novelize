@@ -40,7 +40,6 @@ async function onContentChange(newContent) {
   }
   pageContent = newContent;
   let summary;
-  let notes = {};
   if (newContent) {
     if (newContent.length > MAX_MODEL_CHARS) {
       updateWarning(
@@ -52,8 +51,30 @@ async function onContentChange(newContent) {
     showSummary('Loading...');
     console.log('summaryTypeSelect.value:', summaryTypeSelect.value);
     if (summaryTypeSelect.value === 'characters') {
-        summary = await updateNotesWithParagraph(paragraph, notes, 50);
-        console.log("Final Notes:", summary);
+        summary = await updateNotesWithParagraph(newContent);
+        summary = {
+            "Alice": [
+                "went to the market and bought some apples",
+                "thanked Bob for his help",
+                "returned home with the apples",
+                "started baking a pie",
+                "happily shared some flour with Charlie",
+                "decided to visit the park",
+                "took some photos"
+            ],
+            "Bob": [
+                "helped her carry the basket",
+                "joined Alice",
+                "helped peel the apples",
+                "invited Charlie to stay for dinner",
+                "decided to visit the park",
+                "played fetch with Charlie's dog"
+            ],
+            "Charlie": [
+                "met Alice and Bob at the park",
+                "brought his dog along"
+            ]
+        };
     } else {
         summary = await generateSummary(newContent);
     }
