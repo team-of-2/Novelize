@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-
+import { updateNotesWithParagraph } from "./bedrock-runtime/character.js";
 // The underlying model has a context of 1,024 tokens, out of which 26 are used by the internal prompt,
 // leaving about 998 tokens for the input text. Each token corresponds, roughly, to about 4 characters, so 4,000
 // is used as a limit to warn the user the content might be too long to summarize.
@@ -40,6 +40,7 @@ async function onContentChange(newContent) {
   }
   pageContent = newContent;
   let summary;
+  let notes = {};
   if (newContent) {
     if (newContent.length > MAX_MODEL_CHARS) {
       updateWarning(
@@ -51,30 +52,8 @@ async function onContentChange(newContent) {
     showSummary('Loading...');
     console.log('summaryTypeSelect.value:', summaryTypeSelect.value);
     if (summaryTypeSelect.value === 'characters') {
-        summary = await generateSummaryByClaude(newContent);
-        summary = {
-            "Alice": [
-                "went to the market and bought some apples",
-                "thanked Bob for his help",
-                "returned home with the apples",
-                "started baking a pie",
-                "happily shared some flour with Charlie",
-                "decided to visit the park",
-                "took some photos"
-            ],
-            "Bob": [
-                "helped her carry the basket",
-                "joined Alice",
-                "helped peel the apples",
-                "invited Charlie to stay for dinner",
-                "decided to visit the park",
-                "played fetch with Charlie's dog"
-            ],
-            "Charlie": [
-                "met Alice and Bob at the park",
-                "brought his dog along"
-            ]
-        };
+        summary = await updateNotesWithParagraph(paragraph, notes, 50);
+        console.log("Final Notes:", summary);
     } else {
         summary = await generateSummary(newContent);
     }
